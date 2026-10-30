@@ -1,0 +1,8 @@
+SheetJS Community Edition 0.20.3
+Copyright (C) 2013-present SheetJS -- http://sheetjs.com
+Licensed under the Apache License, Version 2.0. See APACHE-2.0.txt.
+Official browser distribution: https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js
+
+docx 9.6.1
+Licensed under the MIT License. See DOCX-LICENSE.txt.
+https://github.com/dolanmiu/docx

@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: video-sales-studio
+    runtime: static
+    branch: main
+    buildCommand: node tests/core.test.mjs
+    staticPublishPath: ./dist
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: SKIP_INSTALL_DEPS
+        value: "true"

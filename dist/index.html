@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>出单观察室 · 视频带货分析</title>
+  <meta name="description" content="上传视频带货数据，查看热销品类、新旧视频贡献，并分析视频话术内容框架、推荐二创画面与剪辑顺序，下载 Word 分析报告。">
+  <meta name="theme-color" content="#26785d">
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="stylesheet" href="./styles.css">
+  <script defer src="./vendor/xlsx.full.min.js"></script>
+  <script defer src="./vendor/docx.js"></script>
+  <script type="module" src="./app.mjs"></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="#" aria-label="出单观察室首页"><span class="brandmark"><i></i><i></i><i></i></span><span>出单观察室<small>CONTENT INSIGHTS</small></span></a>
+    <div class="nav-label">工作空间</div>
+    <nav aria-label="主导航">
+      <a href="#overview" class="nav-item active" data-nav="overview"><span data-icon="grid"></span>分析概览</a>
+      <a href="#categories" class="nav-item" data-nav="categories"><span data-icon="chart"></span>品类表现</a>
+      <a href="#frameworks" class="nav-item" data-nav="frameworks"><span data-icon="layers"></span>话术与画面</a>
+      <a href="#details" class="nav-item" data-nav="details"><span data-icon="table"></span>数据明细</a>
+    </nav>
+    <div class="sidebar-guide"><span data-icon="spark"></span><strong>从数据找到选材方向</strong><p>先看什么在出单，<br>再筛选适合二创的画面。</p></div>
+    <div class="local-note"><span data-icon="shield"></span><div>表格在本地解析<small>数据留在当前浏览器中</small></div></div>
+    <div class="sidebar-foot"><span class="avatar">我</span><span>我的分析空间<small>私有工作台</small></span><span class="online-dot"></span></div>
+  </aside>
+  <main>
+    <header class="topbar"><div class="breadcrumb">工作空间 <span>/</span> 视频带货分析</div><div class="top-status"><i></i>本地数据处理</div></header>
+    <div class="content">
+      <section class="page-title"><div><div class="eyebrow">VIDEO COMMERCE ANALYTICS</div><h1>视频带货分析</h1><p>看清热销品类，找到下一条视频的内容方向。</p></div><div class="title-actions"><button class="btn quiet" id="demo-btn"><span data-icon="play"></span>查看演示</button><button class="btn primary" id="upload-btn"><span data-icon="upload"></span>上传数据表</button></div></section>
+      <input type="file" id="file-input" accept=".xlsx,.xls,.csv" hidden aria-label="上传视频带货数据表">
+      <div id="message" role="status" aria-live="polite" hidden></div>
+
+      <div id="empty-state">
+        <section class="welcome-grid">
+          <div class="upload-card" id="dropzone" role="button" tabindex="0" aria-label="点击或拖放 Excel 和 CSV 文件">
+            <div class="file-visual"><div class="file-sheet"><span></span><div class="mini-chart"><i></i><i></i><i></i><i></i></div><b>DATA</b></div><span class="upload-circle" data-icon="upload"></span></div>
+            <span class="pill green">开始一次新的分析</span><h2>把你的数据表放在这里</h2><p>拖拽文件到此处，或点击选择文件</p><div class="formats"><span>XLSX</span><span>XLS</span><span>CSV</span><small>单文件不超过 20 MB</small></div>
+            <div class="upload-card-foot"><span data-icon="lock"></span>文件读取完成后，自动生成分析</div>
+          </div>
+          <div class="welcome-aside"><div class="section-kicker">一份数据，四个答案</div><h2>从出单结果<br>走到素材筛选</h2><ol class="answer-list"><li><span>01</span><div><strong>哪些品类真正卖得好</strong><p>结合成交额、订单数与视频数量看表现</p></div></li><li><span>02</span><div><strong>新视频还是旧视频在贡献</strong><p>按统计区间，拆开看发布时间与成交</p></div></li><li><span>03</span><div><strong>哪些爆款值得继续验证</strong><p>识别代表视频与单条爆款依赖</p></div></li><li><span>04</span><div><strong>每个品类的话术与画面</strong><p>分析话术结构，推荐素材画面与剪辑顺序</p></div></li></ol></div>
+        </section>
+        <section class="how-section"><div><span class="section-kicker">简单三步</span><h2>把重复分析交给工作台</h2></div><div class="how-grid"><article><span data-icon="file"></span><h3>01 上传数据</h3><p>常见列名自动识别，支持选择工作表和调整字段。</p></article><article><span data-icon="chart"></span><h3>02 自动分析</h3><p>汇总热销品类、新旧视频贡献和出单集中度。</p></article><article><span data-icon="download"></span><h3>03 带走报告</h3><p>下载 Word 报告，保留话术框架、画面建议与参考视频。</p></article></div></section>
+        <div class="empty-foot">支持常见视频带货报表 · 需有视频标题或品类，以及成交金额或订单数</div>
+      </div>
+
+      <div id="dashboard" hidden>
+        <div id="demo-banner" class="demo-banner" hidden><span data-icon="info"></span><span>当前为虚构演示数据，用于体验分析流程。</span><button class="text-btn" id="demo-upload">上传我的数据 <span>↗</span></button></div>
+        <section class="dataset-bar"><div class="dataset-icon" data-icon="file"></div><div class="dataset-name"><strong id="dataset-name"></strong><span id="dataset-meta"></span></div><button class="btn small" id="mapping-btn"><span data-icon="sliders"></span>字段设置</button><button class="btn small" id="reset-btn">清空数据</button></section>
+        <section class="filters" aria-label="分析范围"><div class="range-fields"><label>统计区间<input id="start-date" type="date" aria-label="统计开始日期"></label><span class="date-dash">至</span><label><span class="visually-hidden">统计结束日期</span><input id="end-date" type="date" aria-label="统计结束日期"></label><span id="period-source" class="subtle"></span></div><div class="filter-bottom"><div class="segments" role="group" aria-label="发布时间范围"><button data-scope="all" class="selected">全部视频</button><button data-scope="new">本期发布</button><button data-scope="old">此前发布</button></div><label class="select-wrap">账号<select id="account-select" aria-label="选择账号"><option value="all">全部账号</option></select></label><div class="export-actions"><button class="btn small" id="csv-btn"><span data-icon="download"></span>导出明细</button><button class="btn primary small" id="word-btn"><span data-icon="file"></span>下载 Word 报告</button></div></div></section>
+        <div id="quality-notes"></div>
+        <section id="overview" class="anchor-section"><div class="section-heading"><h2>分析概览</h2><span id="scope-note" class="subtle"></span></div><div id="metrics" class="metrics"></div><div id="insights" class="insights"></div></section>
+        <section id="categories" class="anchor-section"><div class="section-heading"><div><h2>品类表现</h2><p>从成交规模、订单与出单覆盖看品类表现</p></div><div class="segments compact"><button data-metric="gmv" class="selected">按成交额</button><button data-metric="orders">按订单数</button></div></div><div class="category-grid"><article class="panel chart-panel"><div class="panel-heading"><h3>成交贡献</h3><span class="subtle">前 7 类</span></div><div id="category-chart"></div><div class="chart-foot">占比以所选范围的对应指标合计为分母</div></article><article class="panel ranking-panel"><div class="panel-heading"><h3>品类排名</h3><span class="subtle" id="category-count"></span></div><div class="table-scroll"><table class="ranking-table"><thead><tr><th>品类</th><th>成交额</th><th>订单</th><th>视频</th><th>出单覆盖</th></tr></thead><tbody id="category-table"></tbody></table></div><div class="table-note">出单覆盖 = 有订单的视频条数 ÷ 订单信息完整的视频条数</div></article></div><div class="panel cohort-panel"><div class="panel-heading"><div><h3>新旧视频贡献</h3><p>发布时间与本次报表统计区间是两个不同的口径</p></div></div><div id="cohort-view"></div></div></section>
+        <section id="frameworks" class="anchor-section"><div class="section-heading"><div><h2>视频话术与二创画面</h2><p>保留话术内容框架分析，同时推荐画面类别与剪辑顺序</p></div><span class="pill neutral">基于品类与标题推断</span></div><p class="framework-disclaimer"><span data-icon="info"></span>话术结构用于筛选、重组现有录播中的表达，画面建议用于挑选对应片段。未核实原片口播与画面，以下不作为原片还原；缺少的素材可跳过，商品信息以原素材明确说明为准。</p><div id="framework-list"></div></section>
+        <section id="details" class="anchor-section"><div class="section-heading"><div><h2>数据明细</h2><p>检查识别结果，必要时修正单条视频的品类</p></div><span class="subtle" id="detail-count"></span></div><div class="panel"><div class="detail-toolbar"><label class="search-field"><span data-icon="search"></span><input id="search-input" placeholder="搜索标题或品类" aria-label="搜索视频标题或品类"></label><select id="category-filter" aria-label="按品类筛选"><option value="all">全部品类</option></select><label class="check-label"><input id="unknown-only" type="checkbox">仅看待识别</label></div><div class="table-scroll"><table class="detail-table"><thead><tr><th>视频标题</th><th>品类</th><th>发布时间</th><th>直接成交额</th><th>订单数</th><th>观看次数</th><th>来源行</th></tr></thead><tbody id="detail-table"></tbody></table></div><div class="pagination"><span id="page-info"></span><div><button class="btn small" id="prev-page">上一页</button><button class="btn small" id="next-page">下一页</button></div></div></div></section>
+        <section class="method-note"><span data-icon="shield"></span><div><strong>数据口径</strong><p>品类优先读取表内品类，缺少时依据标题关键词推断；多商品视频不能据此拆出商品级销量。直接成交额与引流成交额分别统计，未提供的指标不会按 0 补齐。统计区间用于区分新旧视频，不代表筛选成交发生日期。</p></div></section>
+      </div>
+      <footer class="page-footer"><span>出单观察室</span><span>让每一次复盘，更接近下一步行动</span></footer>
+    </div>
+  </main>
+  <dialog id="mapping-dialog"><form id="mapping-form"><div class="dialog-head"><div><h2>确认数据字段</h2><p>列名不同也可以分析，将表格列对应到下列字段。</p></div><button type="button" class="icon-btn" id="close-mapping" aria-label="关闭字段设置">×</button></div><div class="mapping-source"><label>工作表<select id="sheet-select"></select></label><label>标题所在行<input id="header-row" type="number" min="1" max="100" value="1"></label></div><div id="mapping-fields" class="mapping-fields"></div><p class="mapping-tip">至少选择“视频标题”或“商品品类”，以及“直接成交金额”或“成交订单数”。单位会读取列名中的“万元”“千元”。</p><label class="check-label"><input id="dedupe-check" type="checkbox" checked>忽略内容完全相同的重复行</label><div id="mapping-error" class="form-error" role="alert"></div><div class="dialog-actions"><button type="button" class="btn" id="cancel-mapping">取消</button><button type="submit" class="btn primary">应用并分析</button></div></form></dialog>
+  <dialog id="edit-dialog"><form id="edit-form"><div class="dialog-head"><div><h2>修正视频品类</h2><p id="edit-title"></p></div><button type="button" class="icon-btn" id="close-edit" aria-label="关闭品类编辑">×</button></div><label class="edit-label">品类名称<input id="edit-category" list="category-options" maxlength="60" required placeholder="选择或输入品类名称"></label><datalist id="category-options"></datalist><p class="subtle">只修改当前浏览器中的分类，不会更改原始 Excel。</p><div class="dialog-actions"><button type="button" class="btn" id="cancel-edit">取消</button><button type="submit" class="btn primary">保存并更新分析</button></div></form></dialog>
+  <div id="toast" role="status" hidden></div>
+</body>
+</html>

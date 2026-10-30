@@ -1,0 +1,17 @@
+.sites-local/
+node_modules/
+.DS_Store
+artifacts/
+qa/
+*.log
+
+.env
+.env.*
+!.env.example
+.openai/
+*.xlsx
+*.xls
+*.csv
+*.docx
+*.zip
+*.tar.gz
