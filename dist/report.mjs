@@ -33,13 +33,14 @@ export function createReportDocument(report,lib,demo=false){
   }
   body.push(p('发布时间与报表统计区间是两个不同口径。统计区间在本工具中用于区分新旧视频，不能从发布时间推导成交发生日期。比较二创视频表现时，建议比较发布后相同天数的成交。',true));
   body.push(h('主要品类的话术与画面建议'));
-  body.push(p('以下同时保留视频话术内容框架分析和二创画面建议。话术主线依据品类、有成交视频的标题卖点推断，用于筛选和重组已有录播表达，不代表原片口播转写。画面类别用于挑选对应素材，缺少的片段可跳过；商品信息以原素材明确说明为准。',true));
+  body.push(p('以下保留已读取的视频内容证据，并给出可复用的话术框架和二创画面建议。证据与建议分别标注；建议开头不是原片口播转写。画面类别用于挑选已有录播素材，商品信息以原素材明确说明为准。',true));
   for(const group of report.groups.filter(g=>g.name!=='待识别').slice(0,6)){
     const f=getFramework(group.name),speech=getSpeechFramework(group.name,group.records,metric);body.push(h(`${group.name} ${f.focus}`,2));
     body.push(p(`${group.count}条视频，直接成交额${money(group.gmv)}元，订单数${money(group.orders)}单。单条最高贡献占该品类${metricLabel}的${pct(group.topShare)}。`,false,true));
     const tags=keywords(group.records);if(tags.length)body.push(p('标题常见卖点：'+tags.map(t=>`${t.word} ${t.count}条`).join('、'),false,true));
     body.push(new Paragraph({children:[text('视频话术内容框架',true)],keepNext:true,spacing:{before:120,after:100,line:330,lineRule:LineRuleType.EXACT}}));
     body.push(p(speech.basis,true));
+    for(const item of speech.observed)body.push(p('原片内容证据｜'+item.product+'：'+item.detail,true));
     body.push(p('建议话术主线：'+speech.angle,false,true));
     speech.stages.forEach((item,i)=>body.push(new Paragraph({children:[text(`${i+1}  ${item.label}：`,true),text(item.detail)],indent:{left:240,hanging:240},spacing:{after:70,line:320,lineRule:LineRuleType.EXACT},keepNext:i<speech.stages.length-1})));
     body.push(p('话术开头示例：“'+speech.opening+'”'));
@@ -59,8 +60,9 @@ export function createReportDocument(report,lib,demo=false){
   }
   body.push(h('数据口径与来源'));
   body.push(p(`来源文件：${report.filename}。统计区间${period.start}至${period.end}，${period.source}。当前账号筛选：${report.options.account==='all'?'全部账号':report.options.account}；分析范围：${scope}。`,true));
-  body.push(p('品类优先采用表内商品品类，缺少时由标题关键词推断，也可能由使用者手动修正。一条视频包含多个商品时，本表不能还原商品级销量。标题提到的卖点与成交存在关联，不能据此认定因果关系。',true));
+  body.push(p('通过字幕、音轨及画面判断主讲品，标题和表内品类仅作线索；使用者手动修正优先。按本次约定，确认主讲品后，将该视频100%的直接成交额及订单归属主讲品，这是视频主讲品归因口径，并非平台商品订单明细。证据不足保留待识别。表达与成交有关联，不能据此认定因果。',true));
   body.push(p('直接成交额与引流成交额不混加。平均每单成交额仅计算金额和订单数均完整的记录，不等同于商品单价。观看次数可能由“万”等简写换算，未使用观看次数代替商品点击次数计算购买转化率。',true));
+  if(!demo&&report.coverage){const c=report.coverage;body.push(p(`有成交视频${c.positive}条，内容核验确认${c.confirmed}条，手动指定${c.manual}条；待识别${c.unknown}条，直接成交额${money(c.unknownGmv)}元，订单${money(c.unknownOrders)}单。`,true));}
   const unknown=report.groups.find(g=>g.name==='待识别');if(unknown)body.push(p(`仍有${unknown.count}条待识别记录，直接成交额${money(unknown.gmv)}元，保留在品类统计中。`,true));
   if(report.quality.removedExact)body.push(p(`本次忽略${report.quality.removedExact}条内容完全相同的重复行。`,true));
   if(report.quality.duplicates?.length)body.push(p(`另有${report.quality.duplicates.length}行与其他记录的视频ID或链接重复，当前保留。请核对数据粒度和成交是否重复归属。`,true));

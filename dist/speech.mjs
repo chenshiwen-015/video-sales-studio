@@ -19,5 +19,7 @@ export function getSpeechFramework(category,records=[],metric='gmv'){
   };
   const measure=metric==='orders'?'有订单':'有直接成交';
   const basis=signals.length?`本品类有 ${eligible.length} 条${measure}且有标题的视频。标题中较常出现的卖点为${signals.map(x=>`“${x.word}” ${x.count} 条`).join('、')}；可优先围绕这些表达筛选原有话术片段。`:eligible.length?`本品类有 ${eligible.length} 条${measure}且有标题的视频，当前关键词规则未提取到明确卖点。以下使用该品类的内容结构建议，需结合原录播核对。`:'当前范围没有同时具备标题与正成交指标的视频。以下为品类内容结构建议，分析依据仍需补充。';
-  return {...base,basis,signals,sampleSize:eligible.length,note:'话术结构依据品类与标题推断，示例不是原片口播转写。用于筛选和重组已有录播中的话术片段；商品参数、尺码与价格以原素材明确说明为准。'};
+  const observed=records.filter(r=>(r[metric]??0)>0&&r.analysis?.status==='confirmed'&&r.analysis.evidence?.length).sort((a,b)=>(b[metric]??0)-(a[metric]??0)).slice(0,3).map(r=>({product:r.mainProduct||r.title,detail:r.analysis.speechStages?.length?r.analysis.speechStages.map(x=>(x.seconds===null||x.seconds===undefined?'':x.seconds+'秒 ')+x.label+'：'+x.detail).join(' → '):r.analysis.evidence.map(x=>(x.seconds===null||x.seconds===undefined?'':x.seconds+'秒 ')+x.text).join('；')}));
+  const contentBasis=observed.length?`以下列出 ${observed.length} 条已确认主讲品的成交视频内容证据，再给出可复用的话术结构。证据描述不代表整片逐字稿。`:basis;
+  return {...base,basis:contentBasis,observed,signals,sampleSize:eligible.length,note:'下方结构为二创建议；已读内容在证据中单列，示例不是原片口播转写。用于筛选和重组已有录播中的话术片段；商品参数、尺码与价格以原素材明确说明为准。'};
 }

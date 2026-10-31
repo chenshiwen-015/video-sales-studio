@@ -1,11 +1,10 @@
 {
   "name": "video-sales-studio",
   "private": true,
-  "version": "1.0.0",
+  "version": "2.0.0",
   "scripts": {
-    "test": "node tests/core.test.mjs"
+    "start": "node server/index.mjs",
+    "test": "node tests/core.test.mjs && node --test tests/analysis.test.mjs"
   },
-  "engines": {
-    "node": "22.x"
-  }
+  "engines": { "node": "22.x" }
 }

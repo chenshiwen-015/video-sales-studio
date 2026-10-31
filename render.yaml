@@ -11,3 +11,22 @@ services:
         value: "22"
       - key: SKIP_INSTALL_DEPS
         value: "true"
+  - type: web
+    name: video-sales-studio-api
+    runtime: docker
+    branch: main
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    autoDeployTrigger: commit
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-5.6-terra
+      - key: OPENAI_TRANSCRIBE_MODEL
+        value: gpt-transcribe
+      - key: ALLOWED_ORIGINS
+        value: https://video-sales-studio.onrender.com
+      - key: DAILY_VIDEO_LIMIT
+        value: "400"

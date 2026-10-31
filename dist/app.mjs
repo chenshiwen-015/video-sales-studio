@@ -1,6 +1,10 @@
 import {FIELDS,COLORS,CATEGORY_NAMES,matchHeaders,detectHeader,normalizeRows,parseNumber,normalizeDate,inferPeriod,cohort,summarize,aggregate,selectRecords,buildReportData,getFramework,keywords,money,compactMoney,pct,safeUrl} from './core.mjs';
 import {downloadWord} from './report.mjs';
 import {getSpeechFramework} from './speech.mjs';
+import {prepareRecords,evidenceCoverage,evidenceText} from './evidence.mjs';
+import {REVIEWED_VIDEOS} from './reviewed-videos.mjs';
+import {analyzeRecords} from './auto-analysis.mjs';
+import {API_BASE} from './config.mjs';
 
 const $=id=>document.getElementById(id);
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -9,7 +13,16 @@ const icon=name=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 function icons(root=document){root.querySelectorAll('[data-icon]').forEach(el=>el.innerHTML=icon(el.dataset.icon));}
 icons();
 const state={filename:'',sheets:{},sheet:'',headerIndex:0,mapping:{},records:[],quality:{},period:null,scope:'all',account:'all',metric:'gmv',demo:false,page:1,search:'',categoryFilter:'all',unknownOnly:false,overrides:new Map(),report:null};
-let toastTimer;
+let toastTimer,analysisController,generation=0,analyzing=false;
+function cancelAnalysis(){generation++;analysisController?.abort();analyzing=false;}
+async function runAnalysis(){
+  const current=++generation;analysisController?.abort();analysisController=new AbortController();analyzing=true;render();
+  message('正在核验视频主讲品、字幕与画面…',true);
+  try{const result=await analyzeRecords(state.records,{base:API_BASE,signal:analysisController.signal,onProgress:(n,total)=>{if(current!==generation)return;message(`正在核验新视频 ${n} / ${total}，已完成的结果已更新…`,true);render();}});
+    if(current!==generation)return;analyzing=false;render();const c=evidenceCoverage(state.records);
+    message(result.error?`已保留已核验结果；新视频自动核验未完成：${result.error}。未确认的成交留在“待识别”。`:`分析完成：${c.confirmed} / ${c.positive} 条有成交视频已核验，${c.unknown} 条待确认。`);
+  }catch(e){if(current===generation&&e.name!=='AbortError'){analyzing=false;message('分析未完成：'+e.message);render();}}
+}
 function toast(text){$('toast').textContent=text;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,3500);}
 function message(text,loading=false){$('message').textContent=text;$('message').className=loading?'loading':'';$('message').hidden=!text;}
 function chooseFile(){$('file-input').click();}
@@ -37,7 +50,7 @@ async function loadFile(file){
     state.sheets=sheets;state.sheet=sheet;state.filename=file.name;state.demo=false;state.overrides.clear();
     const header=detectHeader(sheets[sheet]);state.headerIndex=header.index;state.mapping=header.mapping;
     state.scope='all';state.account='all';state.metric=state.mapping.gmv>=0?'gmv':'orders';
-    if(mappingValid(state.mapping)){applyMapping(true);message('');toast('数据已读取，分析已完成');}
+    if(mappingValid(state.mapping)){applyMapping(true);toast('数据已读取，正在核验视频内容');}
     else {message('需要对应少量字段，确认后即可开始分析。');openMapping();}
   }catch(err){message(`无法读取数据表：${err.message||'请检查文件格式后重试。'}`);}
   finally{$('upload-btn').disabled=false;}
@@ -47,7 +60,8 @@ function applyMapping(resetPeriod=false){
   if(!mappingValid(state.mapping))throw new Error('请选择标题或品类，并至少对应一项成交指标。');
   const result=normalizeRows(state.sheets[state.sheet],state.headerIndex,state.mapping,$('dedupe-check').checked);
   if(!result.records.length)throw new Error('标题行下方未找到有效数据，请检查工作表和标题所在行。');
-  state.records=result.records;state.quality=result;
+  cancelAnalysis();state.records=result.records;state.quality=result;
+  if(!state.demo)prepareRecords(state.records,REVIEWED_VIDEOS);
   for(const r of state.records){const value=state.overrides.get(`${state.sheet}:${r.row}`);if(value){r.category=value;r.categorySource='手动修正';}}
   if(resetPeriod||!state.period)state.period=inferPeriod(state.filename,state.records);
   state.page=1;state.search='';state.categoryFilter='all';state.unknownOnly=false;$('search-input').value='';$('unknown-only').checked=false;
@@ -55,8 +69,9 @@ function applyMapping(resetPeriod=false){
   $('start-date').value=state.period.start;$('end-date').value=state.period.end;
   if(state.mapping[state.metric]<0)state.metric=state.mapping.gmv>=0?'gmv':'orders';
   $('empty-state').hidden=true;$('dashboard').hidden=false;$('demo-banner').hidden=!state.demo;
-  $('dataset-name').textContent=state.filename;$('dataset-meta').textContent=`${state.sheet} · ${state.records.length.toLocaleString()} 条有效记录 · 数据仅保留在当前页面`;
+  $('dataset-name').textContent=state.filename;$('dataset-meta').textContent=`${state.sheet} · ${state.records.length.toLocaleString()} 条有效记录 · 成交数据留在当前页面`;
   render();
+  if(!state.demo)void runAnalysis();
 }
 function openMapping(){
   if(!Object.keys(state.sheets).length){toast('请先上传一份数据表');return;}
@@ -76,7 +91,7 @@ $('mapping-form').addEventListener('submit',e=>{
   if(!mappingValid(m)){$('mapping-error').textContent='请对应视频标题或商品品类，并至少选择成交金额或订单数。';return;}
   const cols=Object.values(m).filter(v=>v>=0);if(new Set(cols).size!==cols.length){$('mapping-error').textContent='同一列不能对应多个不同字段，请检查选择。';return;}
   const previous={sheet:state.sheet,headerIndex:state.headerIndex,mapping:state.mapping};
-  try{state.sheet=$('sheet-select').value;state.headerIndex=Number($('header-row').value)-1;state.mapping=m;applyMapping(false);$('mapping-dialog').close();message('');toast('字段已更新，分析已重新计算');}
+  try{state.sheet=$('sheet-select').value;state.headerIndex=Number($('header-row').value)-1;state.mapping=m;applyMapping(false);$('mapping-dialog').close();toast('字段已更新，正在重新分析');}
   catch(err){Object.assign(state,previous);$('mapping-error').textContent=err.message;}
 });
 function options(){return {scope:state.scope,account:state.account,metric:state.metric,period:state.period};}
@@ -91,10 +106,11 @@ function render(){
   $('metrics').innerHTML=metrics.map(([label,value,unit,ico,note])=>`<article class="metric"><div class="metric-top"><span>${label}</span><span>${icon(ico)}</span></div><div class="metric-value">${value}<small>${value==='未提供'?'':unit}</small></div><div class="metric-note">${esc(note)}</div></article>`).join('');
   $('insights').innerHTML=insights.map(x=>`<article class="insight ${x.kind}"><div class="insight-heading">${icon(x.kind==='watch'?'info':x.kind==='time'?'clock':'spark')}<strong>${esc(x.title)}</strong></div><p>${esc(x.text)}</p></article>`).join('');
   renderQuality();renderCategories(groups);renderCohorts();renderFrameworks(groups);renderDetails();
-  $('word-btn').disabled=!records.length;$('csv-btn').disabled=!records.length;
+  $('word-btn').disabled=analyzing||!records.length;$('csv-btn').disabled=analyzing||!records.length;
 }
 function renderQuality(){
   const q=state.quality,notes=[],total=state.records.length,unclassified=state.records.filter(r=>r.category==='待识别').length;
+  if(!state.demo){const c=evidenceCoverage(state.report.records);notes.push(`有成交视频 ${c.positive} 条，内容核验确认 ${c.confirmed} 条，手动指定 ${c.manual} 条；待识别 ${c.unknown} 条、¥${money(c.unknownGmv)}、${money(c.unknownOrders)} 单。确认主讲品后，整条视频的直接成交额与订单归属该主讲品。`);const errors=[...new Set(state.report.records.filter(r=>r.analysis?.status==='unavailable').map(r=>r.analysis.reason))];for(const reason of errors.slice(0,3))notes.push(reason);}
   if(unclassified)notes.push(`${unclassified} 条记录暂不能判断品类，已计入“待识别”，可在数据明细中修正。`);
   if(q.removedExact)notes.push(`已忽略 ${q.removedExact} 条内容完全相同的重复行，可在字段设置中调整。`);
   else if(q.exactDuplicates)notes.push(`保留了 ${q.exactDuplicates} 条完全重复行，金额可能重复累计。`);
@@ -123,7 +139,7 @@ function renderCohorts(){
 }
 function renderSpeech(group){
   const s=getSpeechFramework(group.name,group.records,state.metric);
-  return `<section class="speech-section" aria-label="视频话术内容框架"><div class="speech-heading"><h4>视频话术内容框架</h4><span class="pill neutral">结构建议</span></div><p class="speech-basis">${esc(s.basis)}</p><p class="speech-angle"><span>建议话术主线</span>${esc(s.angle)}</p><ol class="speech-stages">${s.stages.map(stage=>`<li><strong>${esc(stage.label)}</strong><p>${esc(stage.detail)}</p></li>`).join('')}</ol><p class="speech-opening"><span>话术开头示例</span>“${esc(s.opening)}”</p><p class="speech-note">${esc(s.note)}</p></section>`;
+  return `<section class="speech-section" aria-label="视频话术内容框架"><div class="speech-heading"><h4>视频话术内容框架</h4><span class="pill neutral">${s.observed.length?'内容证据 + 结构建议':'结构建议'}</span></div><p class="speech-basis">${esc(s.basis)}</p>${s.observed.map(e=>`<p class="speech-basis"><strong>${esc(e.product)}</strong>：${esc(e.detail)}</p>`).join('')}<p class="speech-angle"><span>建议话术主线</span>${esc(s.angle)}</p><ol class="speech-stages">${s.stages.map(stage=>`<li><strong>${esc(stage.label)}</strong><p>${esc(stage.detail)}</p></li>`).join('')}</ol><p class="speech-opening"><span>话术开头示例</span>“${esc(s.opening)}”</p><p class="speech-note">${esc(s.note)}</p></section>`;
 }
 function renderFrameworks(groups){
   const candidates=groups.filter(g=>g.name!=='待识别').slice(0,6);
@@ -133,12 +149,12 @@ function renderDetails(){
   const base=state.report.records,groups=aggregate(base,state.metric),current=$('category-filter').value;
   $('category-filter').innerHTML='<option value="all">全部品类</option>'+groups.map(g=>`<option value="${esc(g.name)}">${esc(g.name)}</option>`).join('');
   $('category-filter').value=groups.some(g=>g.name===state.categoryFilter)?state.categoryFilter:'all';
-  let rows=base.filter(r=>(!state.unknownOnly||r.category==='待识别')&&(state.categoryFilter==='all'||r.category===state.categoryFilter)&&(!state.search||(r.title+' '+r.category).toLowerCase().includes(state.search.toLowerCase())));
+  let rows=base.filter(r=>(!state.unknownOnly||r.category==='待识别')&&(state.categoryFilter==='all'||r.category===state.categoryFilter)&&(!state.search||(r.title+' '+r.category+' '+(r.mainProduct||'')).toLowerCase().includes(state.search.toLowerCase())));
   rows.sort((a,b)=>(b[state.metric]??-Infinity)-(a[state.metric]??-Infinity));
   const pages=Math.max(1,Math.ceil(rows.length/15));state.page=Math.min(state.page,pages);
   const pageRows=rows.slice((state.page-1)*15,state.page*15);
   $('detail-count').textContent=`${rows.length} 条记录`;
-  $('detail-table').innerHTML=pageRows.length?pageRows.map(r=>`<tr><td>${r.url?`<a class="detail-title" title="${esc(r.title)}" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.title||'无标题视频')} ↗</a>`:`<span class="detail-title" title="${esc(r.title)}">${esc(r.title||'无标题视频')}</span>`}<div class="row-meta">${esc(r.account)} · ${esc(r.categorySource)}</div></td><td><button class="edit-category-btn ${r.category==='待识别'?'unknown':''}" data-edit="${r.row}" aria-label="修正第${r.row}行品类">${esc(r.category)} ✎</button></td><td>${r.published||'未提供'}</td><td>${r.gmv===null?'未提供':'¥'+money(r.gmv)}</td><td>${r.orders===null?'未提供':money(r.orders)}</td><td>${r.views===null?'未提供':money(r.views)}</td><td>${r.row}</td></tr>`).join(''):'<tr><td colspan="7" class="empty-results">没有匹配的记录，请调整搜索或筛选条件。</td></tr>';
+  $('detail-table').innerHTML=pageRows.length?pageRows.map(r=>`<tr><td>${r.url?`<a class="detail-title" title="${esc(r.title)}" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.title||'无标题视频')} ↗</a>`:`<span class="detail-title" title="${esc(r.title)}">${esc(r.title||'无标题视频')}</span>`}<div class="row-meta">${esc(r.account)} · ${esc(r.categorySource)}${r.mainProduct?' · 主讲：'+esc(r.mainProduct):''}</div>${r.analysis?.evidence?.length?`<div class="row-meta" title="${esc(evidenceText(r))}">${esc(evidenceText(r).slice(0,160))}</div>`:''}</td><td><button class="edit-category-btn ${r.category==='待识别'?'unknown':''}" data-edit="${r.row}" aria-label="修正第${r.row}行品类">${esc(r.category)} ✎</button></td><td>${r.published||'未提供'}</td><td>${r.gmv===null?'未提供':'¥'+money(r.gmv)}</td><td>${r.orders===null?'未提供':money(r.orders)}</td><td>${r.views===null?'未提供':money(r.views)}</td><td>${r.row}</td></tr>`).join(''):'<tr><td colspan="7" class="empty-results">没有匹配的记录，请调整搜索或筛选条件。</td></tr>';
   $('page-info').textContent=`第 ${state.page} / ${pages} 页 · 每页 15 条`;$('prev-page').disabled=state.page<=1;$('next-page').disabled=state.page>=pages;
 }
 document.querySelectorAll('[data-scope]').forEach(b=>b.addEventListener('click',()=>{state.scope=b.dataset.scope;state.page=1;render();}));
@@ -154,15 +170,16 @@ let editingRow=null;
 $('detail-table').addEventListener('click',e=>{const b=e.target.closest('[data-edit]');if(!b)return;editingRow=Number(b.dataset.edit);const r=state.records.find(r=>r.row===editingRow);$('edit-title').textContent=(r.title||'无标题视频').slice(0,100);$('edit-category').value=r.category==='待识别'?'':r.category;$('category-options').innerHTML=[...new Set([...CATEGORY_NAMES,...state.records.map(r=>r.category)])].map(c=>`<option value="${esc(c)}"></option>`).join('');$('edit-dialog').showModal();});
 for(const id of ['close-edit','cancel-edit'])$(id).addEventListener('click',()=>$('edit-dialog').close());
 $('edit-form').addEventListener('submit',e=>{e.preventDefault();const c=$('edit-category').value.trim();if(!c)return;const r=state.records.find(r=>r.row===editingRow);r.category=c;r.categorySource='手动修正';state.overrides.set(`${state.sheet}:${r.row}`,c);state.categoryFilter='all';$('edit-dialog').close();render();toast('品类已修正，相关分析已更新');});
-$('reset-btn').addEventListener('click',()=>{state.records=[];state.sheets={};state.overrides.clear();state.report=null;$('dashboard').hidden=true;$('empty-state').hidden=false;message('');window.scrollTo({top:0,behavior:'smooth'});toast('数据已从当前页面清空');});
+$('reset-btn').addEventListener('click',()=>{cancelAnalysis();state.records=[];state.sheets={};state.overrides.clear();state.report=null;$('dashboard').hidden=true;$('empty-state').hidden=false;message('');window.scrollTo({top:0,behavior:'smooth'});toast('数据已从当前页面清空');});
 $('word-btn').addEventListener('click',async()=>{const b=$('word-btn');b.disabled=true;try{await downloadWord(state.report,state.demo);toast('Word 报告已生成');}catch(err){message('报告生成失败：'+err.message);}finally{b.disabled=false;}});
 function saveBlob(blob,name){const a=document.createElement('a'),url=URL.createObjectURL(blob);a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);}
-$('csv-btn').addEventListener('click',()=>{const fields=['title','category','categorySource','published','gmv','orders','views','duration','account','url','row'],headers=['视频标题','视频品类','品类来源','发布时间','直接成交金额','成交订单数','观看次数','时长秒','账号','视频链接','来源行'];const cell=v=>'"'+(typeof v==='string'?v.replace(/^[=+@\-\t\r]/,"'$&"):String(v??'')).replace(/"/g,'""')+'"';const rows=[headers,...state.report.records.map(r=>fields.map(f=>r[f]))];saveBlob(new Blob(['\uFEFF'+rows.map(rr=>rr.map(cell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}),'视频分析明细.csv');toast('已导出当前分析范围的明细');});
+$('csv-btn').addEventListener('click',()=>{const fields=['title','mainProduct','category','categorySource','analysisStatus','analysisEvidence','published','gmv','orders','views','duration','account','url','row'],headers=['视频标题','主讲品','视频品类','品类来源','核验状态','内容证据','发布时间','直接成交金额','成交订单数','观看次数','时长秒','账号','视频链接','来源行'];const cell=v=>'"'+(typeof v==='string'?v.replace(/^[=+@\-\t\r]/,"'$&"):String(v??'')).replace(/"/g,'""')+'"';const rows=[headers,...state.report.records.map(r=>fields.map(f=>f==='analysisStatus'?r.analysis?.status:f==='analysisEvidence'?evidenceText(r):r[f]))];saveBlob(new Blob(['\uFEFF'+rows.map(rr=>rr.map(cell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}),'视频分析明细.csv');toast('已导出当前分析范围的明细');});
 document.querySelectorAll('[data-nav]').forEach(a=>a.addEventListener('click',e=>{if(!state.report){e.preventDefault();toast('上传数据表或查看演示后，即可查看分析');return;}document.querySelectorAll('[data-nav]').forEach(x=>x.classList.toggle('active',x===a));}));
 new IntersectionObserver(entries=>{const item=entries.find(e=>e.isIntersecting);if(item)document.querySelectorAll('[data-nav]').forEach(a=>a.classList.toggle('active',a.dataset.nav===item.target.id));},{rootMargin:'-5% 0px -65% 0px'}).observe($('overview'));
 for(const id of ['categories','frameworks','details'])new IntersectionObserver(entries=>{if(entries[0].isIntersecting)document.querySelectorAll('[data-nav]').forEach(a=>a.classList.toggle('active',a.dataset.nav===id));},{rootMargin:'-5% 0px -65% 0px'}).observe($(id));
 
 function loadDemo(){
+  cancelAnalysis();
   const headers=['作品标题','作品ID','播放链接','发布时间','作品时长','直接成交金额','成交订单数','观看次数','达人昵称','引流成交金额'];
   const sample=[
     ['小个子显比例的直筒牛仔裤 #牛仔裤 #显瘦', '2026/10/03',72,28900,59,12800],['秋冬百搭直筒牛仔裤 #牛仔裤 #百搭','2026/09/18',65,42300,86,21000],['看腰胯和裤筒的上身效果 #牛仔裤 #修饰腿型','2026/10/12',88,12800,27,6200],['复古洗水阔腿牛仔裤 #牛仔裤 #洗水','2026/10/19',91,5890,12,2800],['舒服又显瘦的牛仔裤 #牛仔裤','2026/10/25',56,998,2,480],

@@ -22,11 +22,11 @@
       <a href="#details" class="nav-item" data-nav="details"><span data-icon="table"></span>数据明细</a>
     </nav>
     <div class="sidebar-guide"><span data-icon="spark"></span><strong>从数据找到选材方向</strong><p>先看什么在出单，<br>再筛选适合二创的画面。</p></div>
-    <div class="local-note"><span data-icon="shield"></span><div>表格在本地解析<small>数据留在当前浏览器中</small></div></div>
+    <div class="local-note"><span data-icon="shield"></span><div>表格在本地解析<small>成交数据留在当前浏览器中</small></div></div>
     <div class="sidebar-foot"><span class="avatar">我</span><span>我的分析空间<small>私有工作台</small></span><span class="online-dot"></span></div>
   </aside>
   <main>
-    <header class="topbar"><div class="breadcrumb">工作空间 <span>/</span> 视频带货分析</div><div class="top-status"><i></i>本地数据处理</div></header>
+    <header class="topbar"><div class="breadcrumb">工作空间 <span>/</span> 视频带货分析</div><div class="top-status"><i></i>表格本地处理 · 视频自动核验</div></header>
     <div class="content">
       <section class="page-title"><div><div class="eyebrow">VIDEO COMMERCE ANALYTICS</div><h1>视频带货分析</h1><p>看清热销品类，找到下一条视频的内容方向。</p></div><div class="title-actions"><button class="btn quiet" id="demo-btn"><span data-icon="play"></span>查看演示</button><button class="btn primary" id="upload-btn"><span data-icon="upload"></span>上传数据表</button></div></section>
       <input type="file" id="file-input" accept=".xlsx,.xls,.csv" hidden aria-label="上传视频带货数据表">
@@ -52,9 +52,9 @@
         <div id="quality-notes"></div>
         <section id="overview" class="anchor-section"><div class="section-heading"><h2>分析概览</h2><span id="scope-note" class="subtle"></span></div><div id="metrics" class="metrics"></div><div id="insights" class="insights"></div></section>
         <section id="categories" class="anchor-section"><div class="section-heading"><div><h2>品类表现</h2><p>从成交规模、订单与出单覆盖看品类表现</p></div><div class="segments compact"><button data-metric="gmv" class="selected">按成交额</button><button data-metric="orders">按订单数</button></div></div><div class="category-grid"><article class="panel chart-panel"><div class="panel-heading"><h3>成交贡献</h3><span class="subtle">前 7 类</span></div><div id="category-chart"></div><div class="chart-foot">占比以所选范围的对应指标合计为分母</div></article><article class="panel ranking-panel"><div class="panel-heading"><h3>品类排名</h3><span class="subtle" id="category-count"></span></div><div class="table-scroll"><table class="ranking-table"><thead><tr><th>品类</th><th>成交额</th><th>订单</th><th>视频</th><th>出单覆盖</th></tr></thead><tbody id="category-table"></tbody></table></div><div class="table-note">出单覆盖 = 有订单的视频条数 ÷ 订单信息完整的视频条数</div></article></div><div class="panel cohort-panel"><div class="panel-heading"><div><h3>新旧视频贡献</h3><p>发布时间与本次报表统计区间是两个不同的口径</p></div></div><div id="cohort-view"></div></div></section>
-        <section id="frameworks" class="anchor-section"><div class="section-heading"><div><h2>视频话术与二创画面</h2><p>保留话术内容框架分析，同时推荐画面类别与剪辑顺序</p></div><span class="pill neutral">基于品类与标题推断</span></div><p class="framework-disclaimer"><span data-icon="info"></span>话术结构用于筛选、重组现有录播中的表达，画面建议用于挑选对应片段。未核实原片口播与画面，以下不作为原片还原；缺少的素材可跳过，商品信息以原素材明确说明为准。</p><div id="framework-list"></div></section>
+        <section id="frameworks" class="anchor-section"><div class="section-heading"><div><h2>视频话术与二创画面</h2><p>保留话术内容框架分析，同时推荐画面类别与剪辑顺序</p></div><span class="pill neutral">结合视频内容核验</span></div><p class="framework-disclaimer"><span data-icon="info"></span>话术结构用于筛选、重组现有录播中的表达，画面建议用于挑选对应片段。已读取的内容会列出证据，结构建议不作为原片逐字还原；缺少的素材可跳过，商品信息以原素材明确说明为准。</p><div id="framework-list"></div></section>
         <section id="details" class="anchor-section"><div class="section-heading"><div><h2>数据明细</h2><p>检查识别结果，必要时修正单条视频的品类</p></div><span class="subtle" id="detail-count"></span></div><div class="panel"><div class="detail-toolbar"><label class="search-field"><span data-icon="search"></span><input id="search-input" placeholder="搜索标题或品类" aria-label="搜索视频标题或品类"></label><select id="category-filter" aria-label="按品类筛选"><option value="all">全部品类</option></select><label class="check-label"><input id="unknown-only" type="checkbox">仅看待识别</label></div><div class="table-scroll"><table class="detail-table"><thead><tr><th>视频标题</th><th>品类</th><th>发布时间</th><th>直接成交额</th><th>订单数</th><th>观看次数</th><th>来源行</th></tr></thead><tbody id="detail-table"></tbody></table></div><div class="pagination"><span id="page-info"></span><div><button class="btn small" id="prev-page">上一页</button><button class="btn small" id="next-page">下一页</button></div></div></div></section>
-        <section class="method-note"><span data-icon="shield"></span><div><strong>数据口径</strong><p>品类优先读取表内品类，缺少时依据标题关键词推断；多商品视频不能据此拆出商品级销量。直接成交额与引流成交额分别统计，未提供的指标不会按 0 补齐。统计区间用于区分新旧视频，不代表筛选成交发生日期。</p></div></section>
+        <section class="method-note"><span data-icon="shield"></span><div><strong>数据口径</strong><p>通过视频字幕、音轨和画面判断主讲品，标题只作线索。确认后将整条视频直接成交额及订单归属主讲品；证据不足保留待识别。表格与成交数据在本地处理，仅视频链接、标题用于后台内容核验。直接成交额与引流成交额分别统计，未提供的指标不会按 0 补齐。统计区间用于区分新旧视频，不代表筛选成交发生日期。</p></div></section>
       </div>
       <footer class="page-footer"><span>出单观察室</span><span>让每一次复盘，更接近下一步行动</span></footer>
     </div>

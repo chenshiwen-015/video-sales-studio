@@ -1,3 +1,4 @@
+import {evidenceCoverage} from './evidence.mjs';
 export const FIELDS = [
   {key:'title',label:'视频标题',aliases:['作品标题','视频标题','视频名称','标题','商品名称','商品标题','title']},
   {key:'gmv',label:'直接成交金额',aliases:['直接成交金额','直接成交额','支付成交金额','支付金额','成交金额','成交额','销售额','gmv','sales']},
@@ -201,5 +202,5 @@ export function keywords(records) {
 }
 export function buildReportData(records,options,filename,quality={}){
   const visible=selectRecords(records,options),groups=aggregate(visible,options.metric||'gmv');
-  return {filename,options,records:visible,groups,totals:summarize(visible),insights:createInsights(visible,groups,options.period,options.metric||'gmv'),quality};
+  return {filename,options,records:visible,groups,totals:summarize(visible),coverage:evidenceCoverage(visible),insights:createInsights(visible,groups,options.period,options.metric||'gmv'),quality};
 }
