@@ -29,7 +29,7 @@ export function createApp({analyzer=analyzeVideo,origins=(process.env.ALLOWED_OR
     const send=(code,data)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff',...(origin&&allowed?{'Access-Control-Allow-Origin':origin,Vary:'Origin'}:{})});res.end(JSON.stringify(data));};
     if(!allowed)return send(403,{error:'请求来源未授权'});
     if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Origin':origin||origins[0],'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type',Vary:'Origin'});return res.end();}
-    if(path==='/healthz')return send(200,{ok:true,configured:Boolean(process.env.OPENAI_API_KEY),version:'2.0.0',reviewed:Object.keys(REVIEWED_VIDEOS).length});
+    if(path==='/healthz')return send(200,{ok:true,configured:Boolean(process.env.OPENAI_API_KEY),version:'2.0.1',reviewed:Object.keys(REVIEWED_VIDEOS).length});
     if(req.method==='POST'&&path==='/api/analyze'){
       const ip=req.socket.remoteAddress;let rate=rates.get(ip);if(!rate||rate.reset<Date.now()){rate={n:0,reset:Date.now()+3600000};rates.set(ip,rate);}if(++rate.n>40)return send(429,{error:'请求过多，请稍后重试'});
       if(jobs.size>=100)return send(503,{error:'分析任务较多，请稍后重试'});
@@ -49,4 +49,4 @@ export function createApp({analyzer=analyzeVideo,origins=(process.env.ALLOWED_OR
     try{const file=resolve(root,'.'+decodeURIComponent(path==='/'?'/index.html':path));if(!file.startsWith(root)||file.split('/').some(x=>x.startsWith('.')))return send(404,{error:'页面不存在'});const data=await readFile(file);res.writeHead(200,{'Content-Type':({'.html':'text/html; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml'})[extname(file)]||'application/octet-stream','X-Content-Type-Options':'nosniff'});res.end(req.method==='HEAD'?undefined:data);}catch{send(404,{error:'页面不存在'});}
   });server.on('close',()=>clearInterval(cleanup));server.requestTimeout=15000;return server;
 }
-if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url))createApp().listen(Number(process.env.PORT||3000),'0.0.0.0',()=>console.log('Video sales studio listening; version 2.0.0'));
+if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url))createApp().listen(Number(process.env.PORT||3000),'0.0.0.0',()=>console.log('Video sales studio listening; version 2.0.1'));

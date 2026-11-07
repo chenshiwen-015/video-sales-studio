@@ -8,7 +8,7 @@ import {getSpeechFramework} from '../dist/speech.mjs';
 import {analyzeRecords} from '../dist/auto-analysis.mjs';
 import {publicAddress,validateUrl} from '../server/network.mjs';
 import {findVideo,jsonObjects,mediaFromObject} from '../server/extract.mjs';
-import {validateAnalysis} from '../server/analyzer.mjs';
+import {validateAnalysis,apiError} from '../server/analyzer.mjs';
 import {createApp} from '../server/index.mjs';
 const sample=()=>[{title:'#牛仔裤',url:'https://www.douyin.com/video/7687559670814346523',gmv:50,orders:2,category:'牛仔裤',categorySource:'标题关键词'},{title:'#灯芯绒',id:'7999999999999999991',gmv:20,orders:1,category:'灯芯绒裤',categorySource:'标题关键词'}];
 const confirmed={status:'confirmed',mainProduct:'项链',category:'配饰包帽',confidence:.96,evidence:[{source:'visual',text:'手持项链展示扣头',seconds:2}],speechStages:[],reason:'主讲项链'};
@@ -34,3 +34,5 @@ test('backend offline returns explicit unknown, never title fallback; cancelled 
   const rows=sample();prepareRecords(rows,REVIEWED_VIDEOS);const r=await analyzeRecords(rows,{request:async()=>{throw new Error('offline');}});assert.equal(r.error,'offline');assert.equal(rows[1].category,'待识别');assert.equal(rows[0].category,'灯芯绒裤');
   const pending=sample();prepareRecords(pending,REVIEWED_VIDEOS);const controller=new AbortController();controller.abort();await assert.rejects(analyzeRecords(pending,{signal:controller.signal,request:async()=>{throw new DOMException('Cancelled','AbortError');}}));assert.equal(pending[1].category,'待识别');
 });
+
+test('billing inactivity and expired credentials are distinct from rate limits',()=>{assert.match(apiError(429,'billing_not_active').message,/账单尚未激活/);assert.doesNotMatch(apiError(429,'billing_not_active').message,/限流/);assert.match(apiError(401,'expired_secret_key').message,/已过期/);assert.match(apiError(429,'rate_limit_exceeded').message,/限流/);});
